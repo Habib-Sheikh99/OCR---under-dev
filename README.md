@@ -4,8 +4,8 @@ This Deep-Learning model is able to detect and analyze text from raw images/numb
 
 ###
 {
-Library : Pytorch
-from-scratch : True
+Library : Pytorch,
+from-scratch : True,
 deployment ; True_after-learning
 }
 
