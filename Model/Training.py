@@ -23,18 +23,18 @@ plt.imshow(data_point, cmap='gray')
 
 ### MODEL CLASS ###
 
-
 class Neural_Network(nn.Module):
-    def __init__(self, lr:float=0.00001, epochs:int=1000, visualize=False):
+    def __init__(self, lr: float = 0.00001, epochs: int = 1000, visualize=False):
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.visualize=visualize
-        self.learning_rate=lr
-        self.epochs=epochs
-        self.losses=[]
-        self.history=[]
+        self.visualize = visualize
+        self.learning_rate = lr
+        self.epochs = epochs
+        self.losses = []
+        self.epoch_accuracies = []
 
+        # CNN Layers
         self.cnn_layer1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=3)
         self.cnn_layer2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3)
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2, padding=1)
@@ -43,74 +43,92 @@ class Neural_Network(nn.Module):
         self.cnn_layer4 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3)
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
 
-        self.fc1=nn.Linear(in_features=64*4*4, out_features=128)
-        self.relu=nn.ReLU()
-        self.fc2=nn.Linear(in_features=128, out_features=47) # 47 is the number of classes
-
+        # Fully Connected Layers
+        self.fc1 = nn.Linear(in_features=64 * 4 * 4, out_features=128)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(in_features=128, out_features=47)  # 47 classes
 
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
-        self.batch_size=64
-        self.num_classes=47
-        self.total_step=None
-
         self.metric = Accuracy(task='multiclass', num_classes=47).to(self.device)
+
         self.to(self.device)
-  
+
     def forward(self, x):
-        output = self.cnn_layer1(x)
-        output=self.cnn_layer2(output)
+        x = self.cnn_layer1(x)
+        x = self.cnn_layer2(x)
+        x = self.pool1(x)
+        
+        x = self.cnn_layer3(x)
+        x = self.cnn_layer4(x)            ### Model Structure (Not so Complex)
+        x = self.pool2(x)
+        
+        x = x.reshape(x.size(0), -1)
+        
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
+        
+        return x
 
-        output=self.pool1(output)
-
-        output=self.cnn_layer3(output)
-        output=self.cnn_layer4(output)
-
-        output=self.pool2(output)
-
-        output = output.reshape(output.size(0), -1)
-        # print("X-shape : ", output.shape) ### Un-Comment to confirm the dimension of image (if there is an error, Obviously!)
-        output = self.fc1(output)
-        output = self.relu(output)
-        output=self.fc2(output)
-
-        return output
-
-    def _plot_loss(self):
-                    sns.lineplot(self.losses)
-                    plt.show()
-          
     def fit(self, train_loader):
-
+        
         self.train_loader = train_loader
         self.total_steps = len(train_loader)
-        self.epoch_accuracies=[]
-    
-        for epoch in range(self.epochs):
-    
-            for i, (images, labels) in enumerate(self.train_loader):
-                images = images.view(-1, 1 , 28, 28).to(self.device)
-                labels = labels.to(images.device)
 
-                outputs = self.forward(images)
+        for epoch in range(self.epochs):
+            self.metric.reset()
+
+            for i, (images, labels) in enumerate(self.train_loader):            ### Training Process ###
+                images = images.view(-1, 1, 28, 28).to(self.device)
+                labels = labels.to(self.device).long()
+
+                outputs = self.forward(images)            
                 self.loss = self.criterion(outputs, labels)
 
                 self.optimizer.zero_grad()
                 self.loss.backward()
                 self.optimizer.step()
 
-                _ , predicted = torch.max(outputs.data, 1)
+                _, predicted = torch.max(outputs.data, 1)
+                predicted = predicted.to(self.device).long()
+
+                # Update metric
                 self.metric.update(predicted, labels)
                 self.losses.append(self.loss.item())
 
-            self.accuracy = self.metric.compute()
-            self.metric.reset()
-            print(f"Epoch {epoch+1}/{self.epochs}    Loss ~ {self.loss.item():.6f}  Accuracy ~ {self.accuracy:.6f}")
+            # Compute accuracy
+            acc = self.metric.compute()
+            if acc is not None:
+                acc_val = acc.detach().cpu().item()
+                self.epoch_accuracies.append(acc_val)
+            else:
+                print(f"[WARNING] Epoch {epoch+1}: Accuracy returned None.")
+                acc_val = 0.0
+                self.epoch_accuracies.append(acc_val)
+
+            print(f"Epoch {epoch + 1}/{self.epochs}    Loss ~ {self.loss.item():.6f}  Accuracy ~ {acc_val:.6f}")
+            # print(f"[DEBUG] Metric Updates Complete — Accuracy: {acc_val:.4f}, Batches: {len(train_loader)}")
+            # print(f"[DEBUG] Accuracies Collected: {self.epoch_accuracies}")
+            
 
         if self.visualize:
             self._plot_loss()
 
+    def _plot_loss(self):
+        plt.figure(figsize=(12, 5))
 
+        plt.subplot(1, 2, 1)
+        sns.lineplot(data=self.losses, label='Training Loss')
+        plt.title("Training Loss")
+
+        if self.epoch_accuracies:
+            plt.subplot(1,2,2)
+            sns.lineplot(data=self.epoch_accuracies, marker='o', label='Training Accuracy')
+        
+        plt.tight_layout()
+        plt.legend()
+        plt.show()
 
 
 ### Training ###
@@ -142,16 +160,20 @@ train_loader = DataLoader(
 model = Neural_Network(visualize=True, lr=0.0001, epochs=10)
 model.fit(train_loader)
 
-### RESULT :
-# Epoch 1/10    Loss ~ 0.552683  Accuracy ~ 0.681534
-# Epoch 2/10    Loss ~ 0.405365  Accuracy ~ 0.820966
-# Epoch 3/10    Loss ~ 0.349056  Accuracy ~ 0.846543
-# Epoch 4/10    Loss ~ 0.288678  Accuracy ~ 0.859406
-# Epoch 5/10    Loss ~ 0.237350  Accuracy ~ 0.868847        OverALL : 90% after just 10 epochs    
-# Epoch 6/10    Loss ~ 0.361403  Accuracy ~ 0.877163        
-# Epoch 7/10    Loss ~ 0.630927  Accuracy ~ 0.884743        Note! This is Training result.
-# Epoch 8/10    Loss ~ 0.389284  Accuracy ~ 0.888626
-# Epoch 9/10    Loss ~ 0.472142  Accuracy ~ 0.893218
-# Epoch 10/10   Loss ~ 0.259637  Accuracy ~ 0.898768
-
+### RESULT : 
+# Epoch 1/15    Loss ~ 0.516033  Accuracy ~ 0.678688
+# Epoch 2/15    Loss ~ 0.381906  Accuracy ~ 0.823360
+# Epoch 3/15    Loss ~ 0.342590  Accuracy ~ 0.847553
+# Epoch 4/15    Loss ~ 0.362492  Accuracy ~ 0.860124
+# Epoch 5/15    Loss ~ 0.285667  Accuracy ~ 0.868936
+# Epoch 6/15    Loss ~ 0.422216  Accuracy ~ 0.877429
+# Epoch 7/15    Loss ~ 0.324237  Accuracy ~ 0.883910        ### OverALL : 92% in just 15 Epochs
+# Epoch 8/15    Loss ~ 0.260086  Accuracy ~ 0.889512        
+# Epoch 9/15    Loss ~ 0.157135  Accuracy ~ 0.894681
+# Epoch 10/15   Loss ~ 0.302242  Accuracy ~ 0.900186        ### Note! This is Training Result...
+# Epoch 11/15   Loss ~ 0.297627  Accuracy ~ 0.904043        ### Information : The Resulting Plots are available in "Training_Results.pdf"
+# Epoch 12/15   Loss ~ 0.381384  Accuracy ~ 0.909051
+# Epoch 13/15   Loss ~ 0.384912  Accuracy ~ 0.913280
+# Epoch 14/15   Loss ~ 0.225305  Accuracy ~ 0.917101
+# Epoch 15/15   Loss ~ 0.146838  Accuracy ~ 0.922207
 
