@@ -10,4 +10,9 @@ deployment ; True_after-learning
 }
 
 
-The files are under development...
+Training of the OCR has been done successfully - 31 July 2025
+The Training result is 93% - 94% (on average).
+The details and Visualization of the Training process will be added here...
+
+
+Testing (pending)...
