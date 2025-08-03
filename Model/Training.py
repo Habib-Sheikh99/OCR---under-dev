@@ -22,7 +22,7 @@ plt.imshow(data_point, cmap='gray')
 
 
 ### MODEL CLASS ###
-
+                    # NOTE : This isn't that Comlex NN. The Complex NN is going to come soon.
 class Neural_Network(nn.Module):
     def __init__(self, lr: float = 0.00001, epochs: int = 1000, visualize=False):
         super().__init__()
