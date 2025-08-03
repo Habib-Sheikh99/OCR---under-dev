@@ -4,13 +4,13 @@ from google.colab import drive
 
 import torch
 from torch import nn, optim
-from torch import functional as F
+# from torch import functional as F 
 
 from matplotlib import pyplot as plt
 import seaborn as sns
 from torch.utils.data import DataLoader, TensorDataset
 import torchvision
-from torchvision.transforms import transforms
+from torchvision import transform
 from torchmetrics.classification import Accuracy
 
 
