@@ -12,5 +12,12 @@ import seaborn as sns
 from Training import Neural_Network
 
 class Testing(Neural_Network):
-    def __init__(self,):
-      pass
+    def __init__(self):
+      super().__init__()
+
+    def predict(self):
+        self.predict()
+
+    def blah_blah(blah):
+        return 'blah blah' , 'Pending...'
+        
