@@ -4,7 +4,7 @@ from google.colab import drive
 
 import torch
 from torch import nn, optim
-# from torch import functional as F 
+
 
 from matplotlib import pyplot as plt
 import seaborn as sns
