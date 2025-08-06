@@ -1,0 +1,4 @@
+torch == 2.7.0     (or greater)
+numpy == 1.26.0    (or greater)
+pandas == 2.2.0    (or greater)
+sklearn == 1.5.1   (or greater)
