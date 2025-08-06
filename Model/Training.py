@@ -3,7 +3,8 @@ import pandas as pd
 from google.colab import drive
 
 import torch
-from torch import nn, optim
+from torch import nn
+from torch.optim import Adam
 
 
 from matplotlib import pyplot as plt
@@ -49,7 +50,7 @@ class Neural_Network(nn.Module):
         self.fc2 = nn.Linear(in_features=128, out_features=47)  # 47 classes
 
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        self.optimizer = Adam(self.parameters(), lr=self.learning_rate)
         self.metric = Accuracy(task='multiclass', num_classes=47).to(self.device)
 
         self.to(self.device)
